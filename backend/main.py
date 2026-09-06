@@ -460,18 +460,43 @@ async def create_incident(
     
     if "application/json" in content_type:
         data = await request.json()
+        if "id" not in data or not data["id"]:
+            data["id"] = f"INC-{uuid.uuid4().hex[:6].upper()}"
         if "created_at" not in data or not data["created_at"]:
             data["created_at"] = now_iso
         if "time" not in data or not data["time"]:
             data["time"] = data["created_at"]
+        if "status" not in data or not data["status"]:
+            data["status"] = "REPORTED"
+        if "estimated_victims" not in data or data["estimated_victims"] is None:
+            data["estimated_victims"] = 1
+        if "reports_count" not in data or data["reports_count"] is None:
+            data["reports_count"] = 1
+        if "location" not in data or not data["location"]:
+            data["location"] = {"lat": 40.7128, "lng": -74.0060}
+
+        ai_pri, ai_reason = evaluate_ai_priority(
+            data.get("type", "Other"),
+            data.get("description", ""),
+            data.get("estimated_victims", 1),
+            bool(data.get("photo_url")),
+            bool(data.get("audio_url"))
+        )
+        if "ai_priority" not in data or not data["ai_priority"]:
+            data["ai_priority"] = ai_pri
+        if "ai_priority_reason" not in data or not data["ai_priority_reason"]:
+            data["ai_priority_reason"] = ai_reason
+        if "severity" not in data or not data["severity"]:
+            data["severity"] = ai_pri
+
         incident = Incident(**data)
-        # Automatically send Command Centre email notification
+        # Automatically send Command Centre email notification to shreyasbpalan5@gmail.com
         email_res = dispatch_command_center_email(incident)
         incidents_db.insert(0, incident)
         return {
             "message": "Incident reported successfully",
             "incident": incident,
-            "command_center_email_sent": True,
+            "command_center_email_sent": email_res.get("email_delivered", True),
             "command_center_recipient": COMMAND_CENTER_EMAIL
         }
 
