@@ -105,8 +105,16 @@ export async function markIncidentSynced(id: string, serverIncident?: any): Prom
       if (existing) {
         existing.sync_status = 'synced';
         if (serverIncident) {
+          if (serverIncident.id) existing.id = serverIncident.id;
           if (serverIncident.photo_url) existing.photo_url = serverIncident.photo_url;
           if (serverIncident.audio_url) existing.audio_url = serverIncident.audio_url;
+          if (serverIncident.email_sent !== undefined) {
+            existing.email_sent = serverIncident.email_sent;
+            existing.email_sent_at = serverIncident.email_sent_at || new Date().toISOString();
+          } else {
+            existing.email_sent = true;
+            existing.email_sent_at = new Date().toISOString();
+          }
         }
         store.put(existing);
       }

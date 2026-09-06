@@ -50,9 +50,28 @@ export async function syncPendingIncidents(): Promise<{ syncedCount: number; err
       }
 
       const data = await response.json();
-      const serverIncident = data.incident;
+      let serverIncident = data.incident;
 
-      // Update sync status in IndexedDB
+      // Ensure email alert is delivered to Command Centre (shreyasbpalan5@gmail.com)
+      if (serverIncident?.id && (!serverIncident.email_sent || item.email_sent === false)) {
+        try {
+          const emailRes = await fetch(`http://localhost:8000/incidents/${serverIncident.id}/send-email`, {
+            method: 'POST'
+          });
+          if (emailRes.ok) {
+            const emailData = await emailRes.json();
+            serverIncident = emailData.incident || {
+              ...serverIncident,
+              email_sent: true,
+              email_sent_at: emailData.email_sent_at || new Date().toISOString()
+            };
+          }
+        } catch (e) {
+          console.warn("Offline sync email alert retry delayed:", e);
+        }
+      }
+
+      // Update sync status & email status in IndexedDB from 'pending' to 'synced'
       await markIncidentSynced(item.id, serverIncident);
       syncedCount++;
 
@@ -64,17 +83,6 @@ export async function syncPendingIncidents(): Promise<{ syncedCount: number; err
           });
         } catch (e) {
           console.warn("Offline sync helper notification delayed:", e);
-        }
-      }
-
-      // Trigger email alert if requested
-      if (item.email_sent && serverIncident?.id) {
-        try {
-          await fetch(`http://localhost:8000/incidents/${serverIncident.id}/send-email`, {
-            method: 'POST'
-          });
-        } catch (e) {
-          console.warn("Offline sync email alert delayed:", e);
         }
       }
 
@@ -91,9 +99,25 @@ export async function syncPendingIncidents(): Promise<{ syncedCount: number; err
   return { syncedCount, errors };
 }
 
+let syncIntervalStarted = false;
+
 export function setupSyncManager() {
+  const triggerSync = () => {
+    if (navigator.onLine) {
+      syncPendingIncidents();
+    }
+  };
+
   window.addEventListener('online', () => {
     console.log('[NETWORK] Internet restored. Triggering automatic sync...');
-    syncPendingIncidents();
+    triggerSync();
   });
+
+  if (!syncIntervalStarted) {
+    syncIntervalStarted = true;
+    // Periodically sync any pending offline incidents every 4 seconds when online
+    setInterval(triggerSync, 4000);
+    // Trigger immediate sync on setup
+    triggerSync();
+  }
 }
