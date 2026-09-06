@@ -163,9 +163,9 @@ export default function CommandCenter() {
   const criticalCount = incidents.filter(i => (i.ai_priority || i.severity) === 'CRITICAL' || (i.ai_priority || i.severity) === 'HIGH').length;
 
   return (
-    <div className="h-full grid grid-cols-12 gap-6">
+    <div className="h-full flex flex-col gap-4 md:grid md:grid-cols-12 md:gap-6 overflow-x-hidden">
       {/* Active Incidents List */}
-      <div className="col-span-3 bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden">
+      <div className="w-full md:col-span-3 bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden max-h-[40vh] md:max-h-none">
         <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-800/30">
           <h3 className="font-semibold text-slate-200">Active Incidents</h3>
           <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs font-bold rounded-full">
@@ -230,12 +230,12 @@ export default function CommandCenter() {
       </div>
 
       {/* Main Map Area */}
-      <div className="col-span-6 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 relative h-full">
+      <div className="w-full md:col-span-6 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 relative min-h-[300px] h-[50vh] md:h-full">
         <LiveMap />
       </div>
 
       {/* Incident Details & Dispatch */}
-      <div className="col-span-3 bg-slate-900 border border-slate-800 rounded-xl overflow-y-auto">
+      <div className="w-full md:col-span-3 bg-slate-900 border border-slate-800 rounded-xl overflow-y-auto max-h-[60vh] md:max-h-none">
         {selectedIncident ? (
           <div className="p-5 space-y-4">
             <div className="flex items-center gap-2 mb-2">

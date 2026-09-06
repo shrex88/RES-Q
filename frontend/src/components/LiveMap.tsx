@@ -190,14 +190,16 @@ export default function LiveMap() {
       </button>
 
       {/* IMD Data Status Badge */}
-      <div className="absolute top-3 right-3 z-[1000] bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-lg text-[11px] font-medium text-slate-300 shadow-xl flex items-center gap-2">
+      <div className="absolute top-3 right-3 z-[1000] bg-slate-950/80 backdrop-blur-md border border-slate-800 px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-[9px] md:text-[11px] font-medium text-slate-300 shadow-xl flex items-center gap-1.5 md:gap-2 max-w-[55vw] md:max-w-none">
         {imdError ? (
-          <span className="text-amber-400 font-bold flex items-center gap-1">
-            ⚠️ IMD feed temporarily unavailable — showing last verified update
+          <span className="text-amber-400 font-bold flex items-center gap-1 truncate">
+            <span className="hidden sm:inline">⚠️ IMD feed temporarily unavailable — showing last verified update</span>
+            <span className="sm:hidden">⚠️ IMD Offline</span>
           </span>
         ) : (
-          <span className="text-emerald-400 font-bold flex items-center gap-1">
-            ⚡ India Meteorological Dept (IMD) — Nationwide Live Feed {lastImdSync && `(${lastImdSync})`}
+          <span className="text-emerald-400 font-bold flex items-center gap-1 truncate">
+            <span className="hidden sm:inline">⚡ India Meteorological Dept (IMD) — Nationwide Live Feed {lastImdSync && `(${lastImdSync})`}</span>
+            <span className="sm:hidden">⚡ IMD Live {lastImdSync && `(${lastImdSync})`}</span>
           </span>
         )}
       </div>
@@ -303,29 +305,30 @@ export default function LiveMap() {
       </MapContainer>
 
       {/* Map Legend */}
-      <div className="absolute bottom-4 right-4 z-[1000] bg-slate-950/90 backdrop-blur-md border border-slate-800 p-3 rounded-xl text-xs space-y-2 text-slate-300 shadow-2xl">
-        <div className="font-bold text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-800 pb-1 mb-1">
-          Nationwide Map Legend
+      <div className="absolute bottom-3 md:bottom-4 right-3 md:right-4 z-[1000] bg-slate-950/90 backdrop-blur-md border border-slate-800 p-2 md:p-3 rounded-xl text-[9px] md:text-xs space-y-1 md:space-y-2 text-slate-300 shadow-2xl max-w-[50vw] md:max-w-none">
+        <div className="font-bold text-slate-100 uppercase tracking-wider text-[8px] md:text-[10px] border-b border-slate-800 pb-1 mb-1">
+          <span className="hidden sm:inline">Nationwide Map Legend</span>
+          <span className="sm:hidden">Legend</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-600 border border-white"></div>
-          <span>Citizen Emergency Incident</span>
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-600 border border-white flex-shrink-0"></div>
+          <span className="truncate">Citizen Emergency</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500 text-[8px] flex items-center justify-center font-bold text-white">⚡</div>
-          <span>IMD Red Alert (Extremely Severe)</span>
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-red-500 text-[6px] md:text-[8px] flex items-center justify-center font-bold text-white flex-shrink-0">⚡</div>
+          <span className="truncate">IMD Red Alert</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-orange-500 text-[8px] flex items-center justify-center font-bold text-white">⚡</div>
-          <span>IMD Orange Alert (Be Prepared)</span>
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-orange-500 text-[6px] md:text-[8px] flex items-center justify-center font-bold text-white flex-shrink-0">⚡</div>
+          <span className="truncate">IMD Orange Alert</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-yellow-500 text-[8px] flex items-center justify-center font-bold text-slate-900">⚡</div>
-          <span>IMD Yellow Alert (Watch)</span>
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-yellow-500 text-[6px] md:text-[8px] flex items-center justify-center font-bold text-slate-900 flex-shrink-0">⚡</div>
+          <span className="truncate">IMD Yellow Alert</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-emerald-500 text-[8px] flex items-center justify-center font-bold text-white">✓</div>
-          <span>IMD Green Area (No Warning)</span>
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-emerald-500 text-[6px] md:text-[8px] flex items-center justify-center font-bold text-white flex-shrink-0">✓</div>
+          <span className="truncate">IMD Green Area</span>
         </div>
       </div>
     </div>
