@@ -124,17 +124,32 @@ export default function LiveMap() {
   const [userLocation, setUserLocation] = React.useState<[number, number] | null>(null);
 
   React.useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation([pos.coords.latitude, pos.coords.longitude]);
-        },
-        (err) => {
-          console.warn("Geolocation warning:", err);
-        },
-        { timeout: 5000 }
-      );
-    }
+    const detectLocation = async () => {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setUserLocation([pos.coords.latitude, pos.coords.longitude]);
+          },
+          async (err) => {
+            console.warn("Geolocation warning, attempting IP lookup:", err);
+            try {
+              const res = await fetch('https://ipapi.co/json/');
+              if (res.ok) {
+                const data = await res.json();
+                if (data.latitude && data.longitude) {
+                  setUserLocation([data.latitude, data.longitude]);
+                  return;
+                }
+              }
+            } catch (e) {
+              console.warn("IP lookup fallback failed:", e);
+            }
+          },
+          { timeout: 4000 }
+        );
+      }
+    };
+    detectLocation();
   }, []);
 
   const handleResetToIndia = () => {

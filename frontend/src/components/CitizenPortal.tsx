@@ -35,6 +35,10 @@ export default function CitizenPortal() {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [locationSource, setLocationSource] = useState<string | null>(null);
+  const [isManualEdit, setIsManualEdit] = useState(false);
+  const [manualLat, setManualLat] = useState('');
+  const [manualLng, setManualLng] = useState('');
 
   const { email } = useAuthStore();
   const [reportType, setReportType] = useState('Road Accident');
@@ -184,41 +188,93 @@ export default function CitizenPortal() {
     }
   };
 
-  // Handle Geolocation capture
+  // Fallback to IP-based Geolocation service
+  const fetchIpLocation = async () => {
+    try {
+      const res = await fetch('https://ipapi.co/json/');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.latitude && data.longitude) {
+          setCoords({ lat: data.latitude, lng: data.longitude });
+          setLocationSource(`IP Estimate (${data.city || data.region || 'Detected Network'})`);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn("IP Geolocation primary service failed, trying backup...", e);
+    }
+
+    try {
+      const resBackup = await fetch('https://ip-api.com/json/');
+      if (resBackup.ok) {
+        const dataBackup = await resBackup.json();
+        if (dataBackup.lat && dataBackup.lon) {
+          setCoords({ lat: dataBackup.lat, lng: dataBackup.lon });
+          setLocationSource(`IP Estimate (${dataBackup.city || dataBackup.regionName || 'Detected Area'})`);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn("IP Geolocation backup service failed", e);
+    }
+
+    // Default region fallback (Mumbai / Center India)
+    setCoords({ lat: 19.0760, lng: 72.8777 });
+    setLocationSource('Default Region (Mumbai, India)');
+    return true;
+  };
+
+  // Robust multi-stage Geolocation capture
   const handleLocation = () => {
     setLocationError(null);
+    setIsGettingLocation(true);
+
     if (!("geolocation" in navigator)) {
-      setLocationError("Geolocation is not supported by your browser");
+      console.warn("Browser Geolocation unavailable, attempting IP location fallback...");
+      fetchIpLocation().finally(() => setIsGettingLocation(false));
       return;
     }
 
-    setIsGettingLocation(true);
+    // Attempt 1: High Accuracy GPS (4s timeout)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setCoords({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude
-        });
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocationSource('GPS Precise');
         setIsGettingLocation(false);
       },
       (err) => {
-        setIsGettingLocation(false);
-        switch (err.code) {
-          case err.PERMISSION_DENIED:
-            setLocationError("Location permission denied by user.");
-            break;
-          case err.POSITION_UNAVAILABLE:
-            setLocationError("Location information is unavailable.");
-            break;
-          case err.TIMEOUT:
-            setLocationError("Location request timed out.");
-            break;
-          default:
-            setLocationError("Failed to capture location.");
-        }
+        console.warn("High accuracy geolocation failed or timed out, trying standard accuracy...", err);
+        
+        // Attempt 2: Low Accuracy / Standard Geolocation (4s timeout)
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setLocationSource('Device Network / Cellular');
+            setIsGettingLocation(false);
+          },
+          (err2) => {
+            console.warn("Standard geolocation failed, falling back to IP Geolocation...", err2);
+            // Attempt 3: IP Geolocation fallback
+            fetchIpLocation().finally(() => setIsGettingLocation(false));
+          },
+          { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
+        );
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
     );
+  };
+
+  const handleApplyManualCoords = () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      setCoords({ lat, lng });
+      setLocationSource('Manually Entered');
+      setIsManualEdit(false);
+      setLocationError(null);
+    } else {
+      setLocationError("Invalid latitude (-90 to 90) or longitude (-180 to 180).");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -671,25 +727,76 @@ export default function CitizenPortal() {
 
               {/* Captured Location Info Card */}
               {coords && (
-                <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center justify-between">
-                  <div className="flex items-start gap-2.5">
-                    <MapPin className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <div className="text-xs font-semibold text-green-400">📍 Location Captured</div>
-                      <div className="text-xs font-mono text-slate-300 mt-0.5">
-                        Latitude: {coords.lat.toFixed(4)} | Longitude: {coords.lng.toFixed(4)}
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start gap-2.5">
+                      <MapPin className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <div className="text-xs font-semibold text-green-400 flex items-center gap-2">
+                          <span>📍 Location Captured</span>
+                          {locationSource && (
+                            <span className="text-[10px] bg-slate-800 border border-slate-700 text-slate-300 px-1.5 py-0.5 rounded font-mono">
+                              {locationSource}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs font-mono text-slate-300 mt-0.5">
+                          Latitude: {coords.lat.toFixed(4)} | Longitude: {coords.lng.toFixed(4)}
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualLat(coords.lat.toString());
+                          setManualLng(coords.lng.toString());
+                          setIsManualEdit(!isManualEdit);
+                        }}
+                        className="text-xs text-slate-400 hover:text-slate-200 underline font-medium"
+                      >
+                        {isManualEdit ? 'Cancel' : 'Edit Coords'}
+                      </button>
+                      <a
+                        href={`https://www.google.com/maps?q=${coords.lat},${coords.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium underline"
+                      >
+                        <span>Open Map</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
-                  <a
-                    href={`https://www.google.com/maps?q=${coords.lat},${coords.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium underline flex-shrink-0 ml-2"
-                  >
-                    <span>Open Map</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+
+                  {/* Manual Coordinate Entry Drawer */}
+                  {isManualEdit && (
+                    <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-center gap-2">
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="Latitude (e.g. 19.0760)"
+                        value={manualLat}
+                        onChange={(e) => setManualLat(e.target.value)}
+                        className="w-full sm:w-1/2 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="Longitude (e.g. 72.8777)"
+                        value={manualLng}
+                        onChange={(e) => setManualLng(e.target.value)}
+                        className="w-full sm:w-1/2 bg-slate-900 border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-blue-500 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyManualCoords}
+                        className="w-full sm:w-auto px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition-colors flex-shrink-0"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
