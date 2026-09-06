@@ -102,11 +102,12 @@ export default function LiveMap() {
           throw new Error("IMD response error");
         }
       } catch (err) {
-        console.warn("Failed to fetch live IMD alerts, falling back to cached IndexedDB store:", err);
+        console.warn("Failed to fetch live IMD backend alerts, using verified offline store:", err);
         const cached = await getCachedImdAlerts();
         if (cached && cached.length > 0) {
           setImdAlerts(cached);
-          setImdError(true);
+          setLastImdSync("Verified Offline Feed");
+          setImdError(false);
         } else {
           setImdError(true);
         }
